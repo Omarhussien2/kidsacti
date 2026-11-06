@@ -1,0 +1,8 @@
+project_id = "child-tracker"
+
+[functions.telegram-webhook]
+verify_jwt = false
+[functions.miniapp-api]
+verify_jwt = false
+[functions.daily-dispatch]
+verify_jwt = false

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>متابعة طفلي</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --green:#22c55e; --yellow:#facc15; --red:#ef4444; --gray:#d1d5db; --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family:"Segoe UI",Tahoma,sans-serif; background:var(--bg); color:var(--text); padding-bottom:80px; }
+  header { padding:14px 16px 6px; text-align:center; }
+  header h1 { margin:0; font-size:20px; }
+  header .sub { color:var(--muted); font-size:13px; margin-top:2px; }
+  .tabs { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--card); border-top:1px solid #334155; z-index:10; }
+  .tabs button { flex:1; background:none; border:none; color:var(--muted); padding:10px 2px 12px; font-size:12px; font-family:inherit; }
+  .tabs button.active { color:var(--text); font-weight:700; }
+  .tabs button .ic { display:block; font-size:20px; margin-bottom:2px; }
+  .page { display:none; padding:12px 14px; }
+  .page.active { display:block; }
+  .card { background:var(--card); border-radius:14px; padding:14px; margin-bottom:10px; }
+  .card h3 { margin:0 0 8px; font-size:15px; }
+  .muted { color:var(--muted); font-size:13px; }
+  .progress { background:#334155; border-radius:99px; height:10px; overflow:hidden; margin:6px 0; }
+  .progress > div { height:100%; background:var(--green); border-radius:99px; transition:width .3s; }
+  .grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+  .cell { aspect-ratio:1; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; cursor:pointer; color:#0f172a; }
+  .lv-green{background:var(--green)} .lv-yellow{background:var(--yellow)} .lv-red{background:var(--red)} .lv-not_started{background:var(--gray)}
+  .badge { display:inline-block; padding:2px 10px; border-radius:99px; font-size:12px; }
+  .b-green{background:#14532d;color:#bbf7d0} .b-yellow{background:#713f12;color:#fde68a} .b-red{background:#7f1d1d;color:#fecaca} .b-gray{background:#334155;color:#cbd5e1}
+  .stats { display:flex; gap:10px; text-align:center; }
+  .stats > div { flex:1; background:#0b1222; border-radius:12px; padding:12px 4px; }
+  .stats .n { font-size:22px; font-weight:800; }
+  button.btn { width:100%; background:#2563eb; color:#fff; border:none; border-radius:12px; padding:12px; font-size:15px; font-family:inherit; font-weight:700; margin-top:8px; cursor:pointer; }
+  button.btn.alt { background:#334155; }
+  .day { border-bottom:1px solid #334155; padding:10px 0; }
+  .day:last-child{border-bottom:none}
+  .day .t { font-weight:700; font-size:14px; }
+  .day .i { white-space:pre-wrap; font-size:13px; color:var(--muted); margin-top:4px; }
+  #detail { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; padding:20px; z-index:20; }
+  #detail .card { max-width:360px; width:100%; }
+</style>
+</head>
+<body>
+<header>
+  <h1>متابعة طفلي 🌟</h1>
+  <div class="sub" id="hdrSub">جاري التحميل...</div>
+</header>
+
+<div class="page active" id="p-week">
+  <div class="card">
+    <h3>واجب الأسبوع 🎯</h3>
+    <div id="weekProgress"></div>
+    <div id="targets"></div>
+    <button class="btn alt" onclick="askAlt()">اطلب نشاط بديل بخامات تانية</button>
+  </div>
+  <div class="card"><h3>خطة الأيام الخمسة</h3><div id="days"></div></div>
+</div>
+
+<div class="page" id="p-map">
+  <div class="card"><h3>خريطة الحروف 🗺️</h3><div class="muted">أخضر = متقن | أصفر = بيتدرب | أحمر = محتاج مراجعة</div><div class="grid" id="mapGrid"></div></div>
+  <div class="card" id="cellDetail" style="display:none"></div>
+</div>
+
+<div class="page" id="p-hero">
+  <div class="card"><div class="stats" id="heroStats"></div></div>
+  <div class="card"><h3>شهادة بطل الأسبوع 🏆</h3><div class="muted">حمّلها وابعتها للعيلة على واتساب</div><button class="btn" onclick="downloadCert()">تحميل الشهادة</button></div>
+</div>
+
+<div class="page" id="p-sub">
+  <div class="card"><h3>الاشتراك 📚</h3><div id="subState" class="muted"></div>
+    <button class="btn" onclick="renew('monthly')">تجديد شهري - 89 ج.م</button>
+    <button class="btn alt" onclick="renew('term')">تجديد ترم - 219 ج.م</button>
+    <button class="btn alt" onclick="renew('annual')">تجديد سنوي + هدية سراج - 649 ج.م</button>
+  </div>
+  <div class="card"><h3>قصص سراج 📖</h3><div class="muted">قصة مطبوعة باسم طفلك من متجر سراج: قصص الصحابة وأبطال السيرة، تعليم من غير شاشات.</div>
+    <button class="btn alt" onclick="seraj()">اطلب قصة مطبوعة</button></div>
+</div>
+
+<div id="detail"><div class="card" id="detailCard"></div></div>
+
+<nav class="tabs">
+  <button class="active" data-p="p-week"><span class="ic">🎯</span>واجب الأسبوع</button>
+  <button data-p="p-map"><span class="ic">🗺️</span>خريطة الحروف</button>
+  <button data-p="p-hero"><span class="ic">🏆</span>لوحة البطل</button>
+  <button data-p="p-sub"><span class="ic">📚</span>الاشتراك</button>
+</nav>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready(); tg.expand();
+const API = "__API_URL__"; // بتتظبط عند النشر (نفس رابط miniapp-api)
+const LVL = { mastered_green:["lv-green","متقن","b-green"], practicing_yellow:["lv-yellow","بيتدرب","b-yellow"], needs_review_red:["lv-red","محتاج مراجعة","b-red"], not_started:["lv-not_started","لسه","b-gray"] };
+let DATA = null, CHILD = null;
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(x => x.classList.remove("active"));
+  b.classList.add("active"); document.getElementById(b.dataset.p).classList.add("active");
+});
+
+async function boot() {
+  try {
+    const r = await fetch(API, { method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ initData: tg.initData || "" }) });
+    if (!r.ok) throw 0;
+    DATA = await r.json();
+  } catch { document.getElementById("hdrSub").textContent = "افتحي التطبيق من زرار البوت داخل تليجرام"; return; }
+  CHILD = DATA.children[0]; if (!CHILD) { document.getElementById("hdrSub").textContent = "أضيفي الطفل من البوت الأول"; return; }
+  tg.setHeaderColor && tg.setHeaderColor("#0f172a");
+  render();
+}
+function render() {
+  document.getElementById("hdrSub").textContent = `${CHILD.name} - ${stageName(CHILD.stage)}`;
+  const done = CHILD.week.days.filter(d => d.status === "completed").length;
+  const total = Math.max(CHILD.week.days.length, 5) || 5;
+  document.getElementById("weekProgress").innerHTML =
+    `<div class="progress"><div style="width:${Math.round(done/total*100)}%"></div></div>
+     <div class="muted">${done} من ${total} أنشطة مكتملة هذا الأسبوع</div>`;
+  document.getElementById("targets").innerHTML = (CHILD.week.days[0]?.extracted_targets_json || []).map(t =>
+    `<div style="margin-top:6px"><span class="badge ${LVL[CHILD.mastery.find(m=>m.skill===t.code||m.skill===t.skill)?.level||"not_started"][2]}">${t.title || t.name || t}</span></div>`).join("") || '<div class="muted">ابعتيلي صورة الواجب في البوت الأول 📸</div>';
+  document.getElementById("days").innerHTML = CHILD.week.days.map(d =>
+    `<div class="day"><div class="t">${["","الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس"][d.day_number] || "يوم "+d.day_number}: ${d.activity_title}
+      <span class="badge ${d.status==="completed"?"b-green":d.status==="sent"?"b-yellow":"b-gray"}">${d.status==="completed"?"تم":d.status==="sent"?"تبعت":"فاضل"}</span></div>
+      ${d.activity_instructions?`<div class="i">${esc(d.activity_instructions)}</div>`:""}</div>`).join("") || '<div class="muted">مفيش خطة لسه</div>';
+  const g = CHILD.mastery.filter(m=>m.level==="mastered_green").length, y = CHILD.mastery.filter(m=>m.level==="practicing_yellow").length, r = CHILD.mastery.filter(m=>m.level==="needs_review_red").length;
+  document.getElementById("mapGrid").innerHTML = CHILD.mastery.map(m =>
+    `<div class="cell ${LVL[m.level][0]}" onclick="showCell('${m.skill}')">${esc(symbolOf(m.name))}</div>`).join("") ||
+    '<div class="muted">الخريطة هتتعبى أول ما تبدأوا المذاكرة</div>';
+  document.getElementById("heroStats").innerHTML =
+    `<div><div class="n">⭐ ${CHILD.stars}</div><div class="muted">النجوم</div></div>
+     <div><div class="n">🔥 ${CHILD.streak}</div><div class="muted">يوم متتالي</div></div>
+     <div><div class="n">${g}/${g+y+r}</div><div class="muted">متمكنة</div></div>`;
+  const s = DATA.parent;
+  const names = { trial:"فترة تجريبية", active_monthly:"شهري", active_term:"ترم", active_annual:"سنوي", expired:"منتهي" };
+  document.getElementById("subState").innerHTML = `الحالة: <b>${names[s.subscription_status]||s.subscription_status}</b>${s.subscription_expires_at?` - ينتهي ${new Date(s.subscription_expires_at).toLocaleDateString("ar-EG")}`:""}`;
+}
+function symbolOf(name){ const m = String(name).match(/[\u0621-\u064Aa-zA-Z\u0660-\u06690-9]([^\s)]*)?/); const s=(String(name).match(/\((.)\)/)||[])[1]; if(s) return s; const en=(String(name).match(/[A-Za-z]/g)||[])[0]; if(en) return en; const ar=(String(name).match(/[\u0621-\u064A]/g)||[])[0]; return ar||"?"; }
+function stageName(st){ return {pre_kg:"Pre-KG",kg1:"KG1",kg2:"KG2",grade1:"Grade 1"}[st]||st; }
+function esc(s){ return String(s??"").replace(/</g,"&lt;"); }
+function showCell(skill){
+  const m = CHILD.mastery.find(x=>x.skill===skill); if(!m) return;
+  document.getElementById("detailCard").innerHTML =
+    `<h3>${esc(m.name)}</h3><div class="muted">المستوى: ${LVL[m.level][1]} ${m.last?"| آخر تدريب: "+new Date(m.last).toLocaleDateString("ar-EG"):""}</div>
+     ${m.notes?`<div class="i" style="margin-top:6px">${esc(m.notes)}</div>`:""}
+     <button class="btn" onclick="focusTomorrow('${skill}')">ركّز على الحرف ده في نشاط بكرة</button>
+     <button class="btn alt" onclick="document.getElementById('detail').style.display='none'">إغلاق</button>`;
+  document.getElementById("detail").style.display="flex";
+}
+function focusTomorrow(skill){ tg.sendData(JSON.stringify({action:"focus_tomorrow", skill})); tg.close(); }
+function askAlt(){ tg.sendData(JSON.stringify({action:"alt_activity"})); tg.close(); }
+function renew(plan){ tg.sendData(JSON.stringify({action:"renew", plan})); tg.close(); }
+function seraj(){ tg.openTelegramLink("https://t.me/seraj_store") || window.open("https://seraj-store.vercel.app","_blank"); }
+
+function downloadCert(){
+  const c = document.createElement("canvas"); c.width=800; c.height=566;
+  const x = c.getContext("2d");
+  const g = x.createLinearGradient(0,0,800,566); g.addColorStop(0,"#1e3a8a"); g.addColorStop(1,"#7c3aed");
+  x.fillStyle=g; x.fillRect(0,0,800,566);
+  x.strokeStyle="#facc15"; x.lineWidth=6; x.strokeRect(24,24,752,518);
+  x.fillStyle="#fff"; x.textAlign="center";
+  x.font="bold 30px Tahoma"; x.fillText("🏆 شهادة بطل الأسبوع 🏆",400,90);
+  x.font="22px Tahoma"; x.fillText("تشهد «رفيق المذاكرة» أن البطل:",400,150);
+  x.fillStyle="#facc15"; x.font="bold 52px Tahoma"; x.fillText(CHILD.name,400,230);
+  x.fillStyle="#fff"; x.font="22px Tahoma";
+  x.fillText(`نجوم الأسبوع: ${CHILD.stars} ⭐  |  أيام انتظام متتالية: ${CHILD.streak} 🔥`,400,300);
+  const gN = CHILD.mastery.filter(m=>m.level==="mastered_green").length;
+  x.fillText(`مهارات أتقنها تمامًا: ${gN}`,400,340);
+  x.font="18px Tahoma"; x.fillStyle="#cbd5e1";
+  x.fillText("نظام متابعة الطفل - سراج",400,480);
+  const a = document.createElement("a"); a.download=`شهادة-${CHILD.name}.png`; a.href=c.toDataURL("image/png"); a.click();
+}
+boot();
+</script>
+</body>
+</html>
