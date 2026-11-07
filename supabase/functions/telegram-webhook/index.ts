@@ -221,9 +221,15 @@ async function handleHomeworkPhoto(chatId: number, tgId: number, parent: any, ch
     { inlineData: { mimeType: "image/jpeg", data: encodeBase64(buf) } },
   ];
 
-  const out = jsonFromGemini(await geminiGenerate("gemini-2.5-flash", parts, {
-    generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
-  }));
+  let out: any = null;
+  try {
+    out = jsonFromGemini(await geminiGenerate("gemini-3.8-flash", parts, {
+      generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
+    }));
+  } catch {
+    await sendMessage(chatId, "حصلت مشكلة تقنية وصلت تحليل الصورة. ابعتيلي الصورة تاني بعد دقيقة، ولو تكررت هنتأكد من الإعداد.");
+    return;
+  }
 
   if (!out || out.is_clear === false) {
     const msg = out?.Confirm_message_ar ?? "الصورة مش واضحة كفاية يا ماما. صوري الصفحة في إضاءة أحسن أو اكتبيلي اسم الحرف وأنا أظبطها.";
@@ -347,7 +353,7 @@ async function generateActivity(parent: any, child: any, todaySkill: string, wea
     .replaceAll("{WEAK_SKILL}", weakName)
     .replace("{VARIATION}", variation ? "\nمهم: اللعبة دي بديل لنشاط سابق، استخدم خامات بيتية مختلفة تمامًا عن المعتادة وخليها أكتر حركة." : "");
 
-  const parts = await geminiGenerate("gemini-2.5-flash-lite", [{ text: prompt }]);
+  const parts = await geminiGenerate("gemini-3.5-flash-lite", [{ text: prompt }]);
   const text = parts.map((p: any) => p.text ?? "").join("\n").trim();
   return { title: todaySkill, text: text || `العبي مع ${child.name} 10 دقايق على ${todaySkill} بخامات البيت.` };
 }
@@ -368,7 +374,7 @@ async function handleFeedback(chatId: number, tgId: number, child: any, rating: 
     .eq("day_number", weekdayNumberCairo()).maybeSingle();
 
   const skillName = todayRow?.activity_title ?? "نشاط اليوم";
-  const parts = await geminiGenerate("gemini-2.5-flash-lite", [{
+  const parts = await geminiGenerate("gemini-3.5-flash-lite", [{
     text: PROMPT_FEEDBACK
       .replaceAll("{CHILD_NAME}", child.name)
       .replaceAll("{TODAY_SKILL}", skillName)
