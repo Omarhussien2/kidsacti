@@ -38,7 +38,7 @@ async function generateActivityText(child: any, todaySkill: string, weakSkill: s
   }
   const prompt = `أنت «رفيق المذاكرة» للأم المصرية على تليجرام. تخاطب الأم فقط، وتساعدها تذاكر لطفلها (${child.name}، في مرحلة ${child.stage}) هدف اليوم: (${todaySkill}) مع دمج مراجعة سريعة لنقطة ضعفه السابقة: (${weakName}).
 مبادئ النشاط: أقل من 10 دقايق، خامات بيتية مصرية عادية فقط (ممنوع شراء أدوات)، عامية مصرية ودودة، مقسمة 3 نقاط: 🎯 اللعبة في 5 دقايق، ✍️ تثبيت سريع في دقيقتين، 💬 جملة تشجيعية تقولها الأم. اختم بطلب صورة أو تقييم من الزرار.`;
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_KEY}`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${GEMINI_KEY}`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }] }),
   });

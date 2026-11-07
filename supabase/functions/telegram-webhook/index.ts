@@ -40,17 +40,29 @@ const webAppButton = (text: string) => ({
 
 // ---------- أدوات Gemini ----------
 async function geminiGenerate(model: string, parts: unknown[], extra: object = {}) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ role: "user", parts }], ...extra }),
-    },
-  );
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts ?? [];
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ role: "user", parts }], ...extra }),
+        },
+      );
+      if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+      const data = await res.json();
+      return data?.candidates?.[0]?.content?.parts ?? [];
+    } catch (e) {
+      lastErr = e as Error;
+      // خطأ مؤقت (503 أو مهلة)؟ استنى 3 ثواني واعيد مرة واحدة
+      const transient = /Gemini (429|5\d\d)|timed? ?out|aborted/i.test(String(e));
+      if (!transient || attempt === 1) throw e;
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  }
+  throw lastErr ?? new Error("Gemini failed");
 }
 function jsonFromGemini(parts: any[]): any {
   const raw = parts.map((p: any) => p.text ?? "").join("");
@@ -223,7 +235,7 @@ async function handleHomeworkPhoto(chatId: number, tgId: number, parent: any, ch
 
   let out: any = null;
   try {
-    out = jsonFromGemini(await geminiGenerate("gemini-3.8-flash", parts, {
+    out = jsonFromGemini(await geminiGenerate("gemini-flash-latest", parts, {
       generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
     }));
   } catch {
@@ -353,7 +365,7 @@ async function generateActivity(parent: any, child: any, todaySkill: string, wea
     .replaceAll("{WEAK_SKILL}", weakName)
     .replace("{VARIATION}", variation ? "\nمهم: اللعبة دي بديل لنشاط سابق، استخدم خامات بيتية مختلفة تمامًا عن المعتادة وخليها أكتر حركة." : "");
 
-  const parts = await geminiGenerate("gemini-3.5-flash-lite", [{ text: prompt }]);
+  const parts = await geminiGenerate("gemini-flash-lite-latest", [{ text: prompt }]);
   const text = parts.map((p: any) => p.text ?? "").join("\n").trim();
   return { title: todaySkill, text: text || `العبي مع ${child.name} 10 دقايق على ${todaySkill} بخامات البيت.` };
 }
@@ -374,7 +386,7 @@ async function handleFeedback(chatId: number, tgId: number, child: any, rating: 
     .eq("day_number", weekdayNumberCairo()).maybeSingle();
 
   const skillName = todayRow?.activity_title ?? "نشاط اليوم";
-  const parts = await geminiGenerate("gemini-3.5-flash-lite", [{
+  const parts = await geminiGenerate("gemini-flash-lite-latest", [{
     text: PROMPT_FEEDBACK
       .replaceAll("{CHILD_NAME}", child.name)
       .replaceAll("{TODAY_SKILL}", skillName)
