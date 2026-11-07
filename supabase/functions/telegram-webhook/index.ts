@@ -43,6 +43,81 @@ async function sendMessage(chatId: number | string, text: string, reply_markup?:
   return res;
 }
 
+// ============================================================
+// رسالة الانتظار الاحترافية: تأكيد فوري + نصيحة تربوية متغيرة
+// ============================================================
+const STUDY_TIPS = [
+  "ابدأوا بجلسة قصيرة 10 دقايق.. الجلسة القصيرة اللي بتخلص أحسن من الطويلة اللي بتزهق.",
+  "لو طفلك مش مركز، خليه يقف ويعمل حركة دقيقتين وبعدين ارجعوا للمذاكرة تاني.",
+  "المدح بالتفصيل أقوى: «إنت حطيت النقطة تحت الباء صح» أحسن من «برافو» لوحدها.",
+  "خلي المذاكرة لعبة مش عقاب.. صوت الحروف بالضحك بيثبت أسرع من الزعيق.",
+  "متقارنش طفلك بحد غيره، قارنه بنفسه إمبارح.. ده اللي بيصنع الثقة.",
+  "لو أخطأ قولي «قربنا جدًا جرب تاني».. كلمة «غلط» بتنسف الحماس.",
+  "اقفلي التلفزيون وقت المذاكرة، والصوت العالي لصوت طفلك وهو بيتعلم أحسن.",
+  "خليه هو اللي يقرا التعليمات بصوت عالي.. اللي بيتكلم بيتعلم أسرع.",
+  "قبل ما تبدأوا: كوباية مياه ونفس عميق.. الجسم المرتاح بيتعلم أسرع.",
+  "المكافأة مش لازم تبقى غالية: نجمة على ورقة أو 5 دقايق لعبة بيحبها كفاية.",
+  "لو زهق بدل ما تتراجعي، غيّري طريقة المهمة: الحرف بمكعبات وبعدين بالقلم.",
+  "ثبتوا الحرف بالحواس الخمس: يكتبه، يلونه، ينطقه، يمثله بإيده، ويلاقي كلمة فيه.",
+  "لو طفلك قلق من المدرسة اسمعه الأول بدون تقييم.. الطفل المرتاح بيتعلم.",
+  "أهم قاعدة: اخلصوا الجلسة على ملاحظة إيجابية.. آخر ذكرة هي اللي بتترسخ.",
+  "التكرار اليومي القصير أقوى بكتير من جلسة طويلة قبل الامتحان بيوم واحد.",
+];
+const HOLDING_LABELS: Record<string, string> = {
+  photo: "⏳ بشتغل على صورة الواجب دلوقتي وبجهز خطة الأسبوع يا ماما.. ثواني بس 🙏",
+  voice: "⏳ بسمع رسالتك الصوتية وبفهمها كويس يا ماما.. واقفة على خطوة واحدة من الرد 🙏",
+  question: "⏳ بتدور على أحسن إجابة ليك يا ماما.. لحظة واحدة 🙏",
+  alt: "⏳ بجهزلك نشاط بديل سهل وممتع يا ماما.. ثواني 🙏",
+  today: "⏳ بجهز نشاط النهارده بالكامل يا ماما.. ثواني 🙏",
+};
+
+function pickTip(): string {
+  return STUDY_TIPS[Math.floor(Math.random() * STUDY_TIPS.length)];
+}
+
+async function sendHolding(chatId: number, context: string): Promise<number | null> {
+  const label = HOLDING_LABELS[context] ?? HOLDING_LABELS.question;
+  const res = await tg("sendMessage", {
+    chat_id: chatId,
+    text: `${label}\n\n💡 *نصيحة سريعة وأنتي بتستني:* ${pickTip()}`,
+    parse_mode: "Markdown",
+    disable_web_page_preview: true,
+  });
+  try { await tg("sendChatAction", { chat_id: chatId, action: "typing" }); } catch { /* اختياري */ }
+  return res?.result?.message_id ?? null;
+}
+
+// تحويل رسالة الانتظار للرد النهائي (تعديل بدل رسالتين)، ولو فشل التحرير نحذفها ونرسل الرد
+async function closeHolding(chatId: number, holdId: number | null, text: string, reply_markup?: unknown) {
+  if (holdId) {
+    const edited = await tg("editMessageText", {
+      chat_id: chatId, message_id: holdId, text,
+      parse_mode: "Markdown", reply_markup, disable_web_page_preview: false,
+    });
+    if (edited?.ok) return;
+    try { await tg("deleteMessage", { chat_id: chatId, message_id: holdId }); } catch { /* اختياري */ }
+  }
+  await sendMessage(chatId, text, reply_markup);
+}
+
+// غلق رسالة الانتظار برسالة مختلفة (خطأ أو مسار خاص) بدون تعديل نصها
+async function clearHolding(chatId: number, holdId: number | null) {
+  if (!holdId) return;
+  try { await tg("deleteMessage", { chat_id: chatId, message_id: holdId }); } catch { /* اختياري */ }
+}
+
+// تغيير نص رسالة الانتظار لمسار تاني بنفس الرسالة
+async function retargetHolding(chatId: number, holdId: number | null, context: string) {
+  if (!holdId) return;
+  try {
+    await tg("editMessageText", {
+      chat_id: chatId, message_id: holdId,
+      text: `${HOLDING_LABELS[context] ?? HOLDING_LABELS.question}\n\n💡 *نصيحة سريعة وأنتي بتستني:* ${pickTip()}`,
+      parse_mode: "Markdown", disable_web_page_preview: true,
+    });
+  } catch { /* اختياري */ }
+}
+
 // إرسال بطاقة بصرية توضيحية للنشاط والحرف عبر sendPhoto مع بديل نصي مضمون
 async function sendVisualActivityCard(
   chatId: number | string,
@@ -514,6 +589,7 @@ async function buildAndSaveWeeklyPlan(
   child: any,
   inputParts: any[],
   imageUrl: string | null = null,
+  holdId: number | null = null,
 ) {
   let out: any = null;
   try {
@@ -523,12 +599,14 @@ async function buildAndSaveWeeklyPlan(
     out = jsonFromAi(rawParts);
   } catch (e) {
     console.error("Plan generation error:", e);
+    await clearHolding(chatId, holdId);
     await sendMessage(chatId, "حصل ضغط بسيط وأنا بقرأ الواجب يا ماما 🙏 ابعتيه تاني أو اكتبيلي اسم الحرف أو الكلمات في رسالة وهجهزلك الخطة حالاً!");
     return;
   }
 
   if (!out || out.is_clear === false) {
     const msg = out?.Confirm_message_ar ?? "الصورة مش واضحة كفاية يا ماما 📸 صوري الصفحة في إضاءة أوضح، أو اكتبيلي في رسالة: «واجبنا حرف كذا وكلمات كذا» وهظبطلك خطة الأسبوع فوراً!";
+    await clearHolding(chatId, holdId);
     await sendMessage(chatId, msg);
     return;
   }
@@ -641,7 +719,7 @@ async function buildAndSaveWeeklyPlan(
     url: s.videoUrl,
   }));
 
-  await sendMessage(chatId, replyText, {
+  await closeHolding(chatId, holdId, replyText, {
     inline_keyboard: [
       [{ text: "🎮 ابعتي نشاط النهارده بالصورة التوضيحية", callback_data: "act:today" }],
       videoButtons.length ? videoButtons : [{ text: "🎨 السبورة التفاعلية للحرف", web_app: { url: `${MINIAPP_URL}?tab=board` } }],
@@ -650,10 +728,11 @@ async function buildAndSaveWeeklyPlan(
   });
 }
 
-async function handleHomeworkPhoto(chatId: number, _tgId: number, _parent: any, child: any, fileId: string, captionText?: string) {
+async function handleHomeworkPhoto(chatId: number, _tgId: number, _parent: any, child: any, fileId: string, captionText?: string, holdId: number | null = null) {
   const fi = await tg("getFile", { file_id: fileId });
   const path = fi?.result?.file_path;
   if (!path) {
+    await clearHolding(chatId, holdId);
     await sendMessage(chatId, "مش قادر أوصل للصورة يا ماما، جربي تبعتيها تاني أو اكتبيلي اسم الحرف في رسالة.");
     return;
   }
@@ -684,14 +763,15 @@ async function handleHomeworkPhoto(chatId: number, _tgId: number, _parent: any, 
   await buildAndSaveWeeklyPlan(chatId, child, [
     { text: promptText },
     { inlineData: { mimeType: "image/jpeg", data: encodeBase64(buf) } },
-  ], imageUrl);
+  ], imageUrl, holdId);
 }
 
 // ============================================================
 // إرسال نشاط اليوم (مع البطاقة البصرية التوضيحية + كلمات الواجب + الروابط)
 // ============================================================
-export async function sendDayActivity(parent: any, child: any, requestedDayNumber?: number, weekStart?: string) {
+export async function sendDayActivity(parent: any, child: any, requestedDayNumber?: number, weekStart?: string, withHolding = false) {
   const chatId = parent.telegram_user_id;
+  const holdId = withHolding ? await sendHolding(chatId, "today") : null;
   const ws = weekStart ?? weekStartDate();
 
   // جلب كل أنشطة الأسبوع الحالي لاختيار أول نشاط غير مكتمل (أو اليوم المحدد)
@@ -784,6 +864,7 @@ export async function sendDayActivity(parent: any, child: any, requestedDayNumbe
     ],
   };
 
+  await clearHolding(chatId, holdId);
   await sendVisualActivityCard(
     chatId,
     child.name,
@@ -989,7 +1070,7 @@ function isYesterday(dateStr: string | null | undefined, todayStr: string): bool
 // ============================================================
 // المحادثة الذكية السلسة مع الأم (ترد على أي سؤال أو طلب تعديل أو إدخال واجب نصي)
 // ============================================================
-async function handleSmartMomConversation(chatId: number, parent: any, child: any, momText: string) {
+async function handleSmartMomConversation(chatId: number, parent: any, child: any, momText: string, holdId: number | null = null) {
   await saveConvMessage(parent.id, child.id, "user", momText);
 
   const ws = weekStartDate();
@@ -1043,13 +1124,13 @@ async function handleSmartMomConversation(chatId: number, parent: any, child: an
 
   // لو الأم طلبت تسجيل واجب جديد بالنص، نبني خطة الـ 5 أيام فوراً!
   if (parsed?.intent === "set_homework_by_text") {
-    await sendMessage(chatId, `من عيوني يا ماما! بجهزلك خطة الـ 5 أيام لـ ${child.name} على أساس الواجب اللي كتبتيه حالاً ⏳`);
+    if (holdId) { try { await tg("editMessageText", { chat_id: chatId, message_id: holdId, text: `⏳ من عيوني يا ماما! بجهزلك خطة الـ 5 أيام لـ ${child.name} على أساس الواجب اللي كتبتيه حالاً.. ثواني 🙏`, disable_web_page_preview: true }); } catch { /* اختياري */ } }
     const textPlanPrompt = PROMPT_HOMEWORK_EXTRACTOR
       .replaceAll("{CHILD_NAME}", child.name)
       .replaceAll("{CHILD_STAGE}", child.stage ?? "kg2")
       .replaceAll("{WEAK_SKILLS}", weak) +
       `\n\nالأم أرسلت وصف الواجب نصياً كالتالي: "${momText}"\nاستخرج الحروف والكلمات المذكورة وصمم خطة الـ 5 أيام.`;
-    await buildAndSaveWeeklyPlan(chatId, child, [{ text: textPlanPrompt }], null);
+    await buildAndSaveWeeklyPlan(chatId, child, [{ text: textPlanPrompt }], null, holdId);
     return;
   }
 
@@ -1104,7 +1185,7 @@ async function handleSmartMomConversation(chatId: number, parent: any, child: an
   ]);
   buttons.push([{ text: "📊 افتحي تطبيق متابعة طفلي والسبورة", web_app: { url: MINIAPP_URL } }]);
 
-  await sendMessage(chatId, replyText, { inline_keyboard: buttons });
+  await closeHolding(chatId, holdId, replyText, { inline_keyboard: buttons });
 }
 
 // ============================================================
@@ -1165,7 +1246,7 @@ async function routeUpdate(u: any) {
     }
 
     if (parts[0] === "act") {
-      await sendDayActivity(parent, child, WEEKDAY_MAP[new Date(Date.now() + 2 * 3600000).getUTCDay()], weekStartDate());
+      await sendDayActivity(parent, child, WEEKDAY_MAP[new Date(Date.now() + 2 * 3600000).getUTCDay()], weekStartDate(), true);
       return;
     }
 
@@ -1186,11 +1267,12 @@ async function routeUpdate(u: any) {
 
         const targets = todayRow?.extracted_targets_json ?? [];
         const primary = targets[0] ?? { title: "حرف الباء (ب)", words: ["بطة", "برج"] };
+        const holdId = await sendHolding(chatId, "alt");
         const altText = await generateDetailedActivity(child, todayRow?.activity_title ?? "نشاط بديل", primary.title, primary.words ?? [], true);
         if (todayRow) {
           await supabaseAdmin.from("weekly_plans_and_activities").update({ activity_instructions: altText }).eq("id", todayRow.id);
         }
-        await sendMessage(chatId, `🔄 *ولا يهمك يا ماما! ده نشاط بديل لـ ${child.name} بخامات أسهل وحركة أكتر:*\n\n${altText}`, {
+        await closeHolding(chatId, holdId, `🔄 *ولا يهمك يا ماما! ده نشاط بديل لـ ${child.name} بخامات أسهل وحركة أكتر:*\n\n${altText}`, {
           inline_keyboard: [
             [
               { text: "متقن وممتاز 🟢", callback_data: `fb:easy_green:${skillIdFromBtn ?? ""}` },
@@ -1285,7 +1367,7 @@ async function routeUpdate(u: any) {
         return;
       }
       if (payload.action === "alt_activity") {
-        await sendDayActivity(parent, child);
+        await sendDayActivity(parent, child, undefined, undefined, true);
         return;
       }
     } catch (e) {
@@ -1367,14 +1449,14 @@ async function routeUpdate(u: any) {
   // --- 6. التعامل مع الصور المرسلة (صورة كراسة الواجب أو صورة تنفيذ الطفل) ---
   const photo = msg.photo?.[msg.photo.length - 1]?.file_id;
   if (photo && child) {
-    await sendMessage(chatId, `وصلت الصورة يا ماما ${child.name}! بقرا كل الكلمات والحروف اللي فيها وبجهزلك الخطة... ثواني ⏳`);
-    await handleHomeworkPhoto(chatId, tgId, parent, child, photo, msg.caption ?? "");
+    const holdId = await sendHolding(chatId, "photo");
+    await handleHomeworkPhoto(chatId, tgId, parent, child, photo, msg.caption ?? "", holdId);
     return;
   }
 
   // --- 7. التعامل مع الرسائل الصوتية من الأم (Voice Notes) ---
   if (msg.voice?.file_id && child) {
-    await sendMessage(chatId, `بسمع رسالتك الصوتية يا ماما ${child.name}... ثواني 🎧`);
+    const holdId = await sendHolding(chatId, "voice");
     try {
       const fi = await tg("getFile", { file_id: msg.voice.file_id });
       const path = fi?.result?.file_path;
@@ -1387,20 +1469,22 @@ async function routeUpdate(u: any) {
         ]);
         const transcribed = voiceParts.map((p: any) => p.text ?? "").join(" ").trim();
         if (transcribed) {
-          await handleSmartMomConversation(chatId, parent, child, transcribed);
+          await handleSmartMomConversation(chatId, parent, child, transcribed, holdId);
           return;
         }
       }
     } catch (e) {
       console.error("voice transcription error:", e);
     }
+    await clearHolding(chatId, holdId);
     await sendMessage(chatId, "سمعتك يا ماما بس الصوت كان واطي شوية، اكتبيلي اللي تحبيه في رسالة أو صوري صفحة الواجب وهرد عليكي فوراً 🌸");
     return;
   }
 
   // --- 8. المحادثة الذكية السلسة مع الأم لأي رسالة نصية ---
   if (msg.text && child) {
-    await handleSmartMomConversation(chatId, parent, child, msg.text.trim());
+    const holdId = await sendHolding(chatId, "question");
+    await handleSmartMomConversation(chatId, parent, child, msg.text.trim(), holdId);
   }
 }
 
