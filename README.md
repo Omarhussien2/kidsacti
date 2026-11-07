@@ -5,7 +5,7 @@
 **بوت تليجرام + تطبيق مصغر يحوّل واجب طفلك إلى خطة لعب 5 أيام… بدون شاشات، وبذكاء اصطناعي.**
 
 [![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-26A5E4?logo=telegram&logoColor=white)](https://t.me/kidsactibot)
-[![Mini App](https://img.shields.io/badge/Telegram_Mini_App-متاح-2AABEE?logo=telegram&logoColor=white)](https://omar-x-art.github.io/kidsacti/)
+[![Mini App](https://img.shields.io/badge/Telegram_Mini_App-متاح-2AABEE?logo=telegram&logoColor=white)](https://omarhussien2.github.io/kidsacti/)
 [![Supabase](https://img.shields.io/badge/Supabase-Backend-3FCF8E?logo=supabase&logoColor=white)]()
 [![Gemini](https://img.shields.io/badge/Gemini-AI_Agent-4285F4?logo=google&logoColor=white)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
