@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>رفيق المذاكرة | واجب طفلك يتحول لخطة لعب 5 أيام</title>
+<meta name="description" content="بوت تليجرام وتطبيق مصغر يحول واجب الطفل إلى خطة لعب تعليمي 5 أيام بدون شاشات، بذكاء اصطناعي." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --purple:#5b3fd4; --purple-d:#3d2a8f; --violet:#7c5cff; --gold:#ffb020;
+    --ink:#2b2440; --muted:#6f6890; --bg:#faf8ff; --card:#ffffff; --green:#18a06a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{font-family:'Cairo',sans-serif; background:var(--bg); color:var(--ink); line-height:1.8}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 22px}
+  /* Hero */
+  header{background:linear-gradient(135deg,var(--purple-d),var(--violet)); color:#fff;
+    padding:70px 0 130px; text-align:center; position:relative; overflow:hidden}
+  header::after{content:''; position:absolute; bottom:-2px; left:0; right:0; height:70px;
+    background:radial-gradient(120% 100% at 50% 0, var(--bg) 60%, transparent 61%)}
+  .pill{display:inline-block; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.25);
+    border-radius:999px; padding:6px 18px; font-size:.9rem; margin-bottom:22px}
+  h1{font-size:clamp(1.8rem,5vw,3rem); font-weight:800; margin-bottom:14px}
+  h1 .hl{color:var(--gold)}
+  .sub{max-width:640px; margin:0 auto 30px; font-size:1.05rem; color:#e9e5ff}
+  .cta{display:flex; gap:14px; justify-content:center; flex-wrap:wrap}
+  .btn{padding:13px 30px; border-radius:14px; font-weight:800; text-decoration:none; font-size:1rem; transition:.2s}
+  .btn-main{background:var(--gold); color:#3a2a00}
+  .btn-main:hover{transform:translateY(-2px)}
+  .btn-ghost{background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.35)}
+  .btn-ghost:hover{background:rgba(255,255,255,.22)}
+  /* Stats */
+  .stats{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:26px}
+  .stat{background:rgba(255,255,255,.12); border-radius:14px; padding:10px 22px; font-size:.95rem}
+  .stat b{color:var(--gold); font-size:1.2rem}
+  /* Sections */
+  section{padding:64px 0}
+  .tag{color:var(--violet); font-weight:800; font-size:.9rem; letter-spacing:.5px}
+  h2{font-size:clamp(1.4rem,3.5vw,2rem); font-weight:800; margin:6px 0 10px}
+  .lead{color:var(--muted); max-width:620px}
+  /* Features */
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px; margin-top:34px}
+  .card{background:var(--card); border:1px solid #eee8ff; border-radius:18px; padding:24px;
+    box-shadow:0 6px 18px rgba(91,63,212,.06); transition:.2s}
+  .card:hover{transform:translateY(-4px); box-shadow:0 10px 26px rgba(91,63,212,.12)}
+  .card .ic{font-size:1.7rem; margin-bottom:8px}
+  .card h3{font-size:1.05rem; font-weight:800; margin-bottom:6px}
+  .card p{font-size:.92rem; color:var(--muted)}
+  /* Screenshot */
+  .shot-band{background:linear-gradient(180deg,var(--bg),#f1ecff)}
+  .shot-band .wrap{text-align:center}
+  .phone{max-width:480px; margin:30px auto 0; border-radius:26px; border:8px solid var(--ink);
+    box-shadow:0 24px 60px rgba(43,36,64,.25); overflow:hidden; background:#fff}
+  .phone img{width:100%; display:block}
+  /* Steps */
+  .steps{counter-reset:step; display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px; margin-top:34px}
+  .step{background:var(--card); border-radius:18px; padding:24px; border:1px solid #eee8ff; position:relative}
+  .step::before{counter-increment:step; content:counter(step); position:absolute; top:-14px; inset-inline-start:20px;
+    background:var(--violet); color:#fff; width:34px; height:34px; border-radius:50%;
+    display:grid; place-items:center; font-weight:800}
+  .step h3{font-size:1rem; font-weight:800; margin:8px 0 4px}
+  .step p{font-size:.9rem; color:var(--muted)}
+  /* Stack */
+  .stack{display:flex; gap:10px; flex-wrap:wrap; margin-top:20px}
+  .chip{background:#efe9ff; color:var(--purple-d); border-radius:999px; padding:6px 16px; font-size:.85rem; font-weight:600}
+  /* CTA band */
+  .final{background:linear-gradient(135deg,var(--purple),var(--purple-d)); border-radius:24px; color:#fff;
+    text-align:center; padding:48px 24px}
+  .final h2{color:#fff}
+  /* Footer */
+  footer{text-align:center; color:var(--muted); font-size:.88rem; padding:36px 0 44px}
+  footer a{color:var(--violet); text-decoration:none; font-weight:700}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="pill">🎓 بوت تليجرام + تطبيق مصغر + وكيل ذكي</span>
+    <h1>واجب طفلك يتحول لـ <span class="hl">خطة لعب 5 أيام</span><br/>بدون شاشات</h1>
+    <p class="sub">ماما بتصوّر صفحة الواجب، والوكيل الذكي يقرأ الكلمات الفعلية ويبني أسبوعًا كاملًا من اللعب التعليمي: أنشطة، نطق صوتي، خريطة إتقان لـ 68 مهارة، وشهادة بطل أسبوعية. كله داخل تليجرام.</p>
+    <div class="cta">
+      <a class="btn btn-main" href="https://t.me/kidsactibot">جرّب البوت على تليجرام</a>
+      <a class="btn btn-ghost" href="https://omar-x-art.github.io/kidsacti/">افتح التطبيق المصغر</a>
+    </div>
+    <div class="stats">
+      <span class="stat">⭐ <b>68</b> مهارة في خريطة الإتقان</span>
+      <span class="stat">📅 <b>5</b> أيام لعب لكل واجب</span>
+      <span class="stat">📵 <b>0</b> شاشة في خطة الطفل</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <span class="tag">المميزات</span>
+    <h2>مش مجرد بوت… ده معلّم خاص لطفلك</h2>
+    <p class="lead">كل عنصر في النظام مبني على فكرة واحدة: الطفل يتقن باللعب، وماما تعرف بالأرقام.</p>
+    <div class="grid">
+      <div class="card"><div class="ic">🧠</div><h3>وكيل يقرأ الواجب فعليًا</h3><p>يقرأ الكلمات من صورة الواجب أو الرسالة أو الصوت، ويصمم الأنشطة الخمسة على نفس الكلمات بالضبط.</p></div>
+      <div class="card"><div class="ic">🗺️</div><h3>خريطة إتقان 68 مهارة</h3><p>كل نشاط يحدّث عدادات الإتقان والمحاولات فورًا، فيظهر نقاط الضعف بوضوح قبل الامتحانات.</p></div>
+      <div class="card"><div class="ic">🎨</div><h3>بطاقة بصرية لكل نشاط</h3><p>صورة توضيحية للحرف والكلمات والخامات، مع أزرار مباشرة لفيديو النطق والسبورة التفاعلية.</p></div>
+      <div class="card"><div class="ic">💬</div><h3>محادثة بالعامية المصرية</h3><p>اسألي الوكيل أي حاجة تربوية، صوّري وإياك، وغيّري الخامات، وهو يفهم ويعدل على طول.</p></div>
+      <div class="card"><div class="ic">🏆</div><h3>شهادة بطل الأسبوع</h3><p>في نهاية كل أسبوع تتحول الجهود لشهادة شخصية يجيبها الطفل بفخر من التطبيق.</p></div>
+      <div class="card"><div class="ic">✍️</div><h3>سبورة تفاعلية</h3><p>تتبع الحرف بالإصبع على الشاشة، مع بطاقات مصورة لكل حرف وكلمة.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="shot-band">
+  <div class="wrap">
+    <span class="tag">شوف بنفسك</span>
+    <h2>التطبيق المصغر: 5 تبويبات كاملة</h2>
+    <div class="phone"><img src="img/app.png" alt="شاشة واجب اليوم في التطبيق المصغر" /></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="tag">إزاي بيشتغل</span>
+    <h2>3 خطوات وتبدأ الأسبوع</h2>
+    <div class="steps">
+      <div class="step"><h3>صوّري الواجب</h3><p>صورة، نص، أو رسالة صوتية في شات البوت.</p></div>
+      <div class="step"><h3>الوكيل يبني الخطة</h3><p>5 أيام أنشطة على كلمات الواجب نفسها، بخامات موجودة في أي بيت.</p></div>
+      <div class="step"><h3>اللعب والمتابعة</h3><p>مؤقت، نطق، تسجيل إتقان، وشهادة بطل في آخر الأسبوع.</p></div>
+    </div>
+    <div class="stack">
+      <span class="chip">Telegram Bot API</span><span class="chip">Telegram Mini App</span><span class="chip">Supabase</span>
+      <span class="chip">Gemini</span><span class="chip">NVIDIA Vision</span><span class="chip">Deno Edge Functions</span><span class="chip">GitHub Pages</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="final">
+      <h2>ابدأ أسبوع طفلك النهاردة</h2>
+      <p style="color:#e9e5ff; margin-bottom:24px">افتح البوت، صوّر أول واجب، وشوف الخطة تحصل قدامك.</p>
+      <a class="btn btn-main" href="https://t.me/kidsactibot">ابدأ من تليجرام</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    صُنع بـ ❤️ في القاهرة · <a href="https://github.com/Omarhussien2">Omar Hussien</a> · <a href="https://github.com/Omarhussien2/kidsacti">الكود على GitHub</a>
+  </div>
+</footer>
+
+</body>
+</html>
