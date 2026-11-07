@@ -11,6 +11,7 @@ const TG = "https://api.telegram.org";
 const TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET")!;
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY")!;
+const NVIDIA_KEY = Deno.env.get("NVIDIA_API_KEY") ?? "";
 const MINIAPP_URL = Deno.env.get("MINIAPP_URL") ?? "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 
@@ -63,6 +64,43 @@ async function geminiGenerate(model: string, parts: unknown[], extra: object = {
     }
   }
   throw lastErr ?? new Error("Gemini failed");
+}
+// موزّع موحّد: جوجل أولًا، ولو فشل (ليمت أو عطل) جرب NVIDIA تلقائيًا
+const NVIDIA_VISION_MODEL = "meta/llama-3.2-90b-vision-instruct";
+async function nvidiaGenerate(parts: unknown[], extra: object = {}) {
+  if (!NVIDIA_KEY) throw new Error("NVIDIA key not set");
+  const messages: any[] = [{ role: "user", content: (parts as any[]).map((p: any) => {
+    if (p.inlineData) return { type: "image_url", image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` } };
+    return { type: "text", text: String(p.text ?? "") };
+  }) }];
+  const gen = (extra as any)?.generationConfig ?? {};
+  const body = {
+    model: NVIDIA_VISION_MODEL,
+    messages,
+    temperature: gen.temperature ?? 0.4,
+    max_tokens: 2000,
+  };
+  const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${NVIDIA_KEY}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`NVIDIA ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error("NVIDIA empty response");
+  return [{ text: content }];
+}
+async function aiGenerate(parts: unknown[], extra: object = {}) {
+  try {
+    return await geminiGenerate("gemini-flash-latest", parts, extra);
+  } catch (geminiErr) {
+    try {
+      return await nvidiaGenerate(parts, extra);
+    } catch {
+      throw geminiErr; // رجع خطأ جوجل الأصلي
+    }
+  }
 }
 function jsonFromGemini(parts: any[]): any {
   const raw = parts.map((p: any) => p.text ?? "").join("");
@@ -235,7 +273,8 @@ async function handleHomeworkPhoto(chatId: number, tgId: number, parent: any, ch
 
   let out: any = null;
   try {
-    out = jsonFromGemini(await geminiGenerate("gemini-flash-latest", parts, {
+    out = jsonFromGemini(await aiGenerate(
+    parts, {
       generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
     }));
   } catch {
@@ -365,7 +404,8 @@ async function generateActivity(parent: any, child: any, todaySkill: string, wea
     .replaceAll("{WEAK_SKILL}", weakName)
     .replace("{VARIATION}", variation ? "\nمهم: اللعبة دي بديل لنشاط سابق، استخدم خامات بيتية مختلفة تمامًا عن المعتادة وخليها أكتر حركة." : "");
 
-  const parts = await geminiGenerate("gemini-flash-lite-latest", [{ text: prompt }]);
+  const parts = await aiGenerate(
+    [{ text: prompt }]);
   const text = parts.map((p: any) => p.text ?? "").join("\n").trim();
   return { title: todaySkill, text: text || `العبي مع ${child.name} 10 دقايق على ${todaySkill} بخامات البيت.` };
 }
@@ -386,7 +426,8 @@ async function handleFeedback(chatId: number, tgId: number, child: any, rating: 
     .eq("day_number", weekdayNumberCairo()).maybeSingle();
 
   const skillName = todayRow?.activity_title ?? "نشاط اليوم";
-  const parts = await geminiGenerate("gemini-flash-lite-latest", [{
+  const parts = await aiGenerate(
+    [{
     text: PROMPT_FEEDBACK
       .replaceAll("{CHILD_NAME}", child.name)
       .replaceAll("{TODAY_SKILL}", skillName)

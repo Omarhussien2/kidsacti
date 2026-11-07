@@ -11,6 +11,7 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 const TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY")!;
+const NVIDIA_KEY = Deno.env.get("NVIDIA_API_KEY") ?? "";
 const MINIAPP_URL = Deno.env.get("MINIAPP_URL") ?? "";
 
 const WEEKDAY_MAP = [1, 2, 3, 4, 5, 5, 5];
@@ -38,12 +39,33 @@ async function generateActivityText(child: any, todaySkill: string, weakSkill: s
   }
   const prompt = `أنت «رفيق المذاكرة» للأم المصرية على تليجرام. تخاطب الأم فقط، وتساعدها تذاكر لطفلها (${child.name}، في مرحلة ${child.stage}) هدف اليوم: (${todaySkill}) مع دمج مراجعة سريعة لنقطة ضعفه السابقة: (${weakName}).
 مبادئ النشاط: أقل من 10 دقايق، خامات بيتية مصرية عادية فقط (ممنوع شراء أدوات)، عامية مصرية ودودة، مقسمة 3 نقاط: 🎯 اللعبة في 5 دقايق، ✍️ تثبيت سريع في دقيقتين، 💬 جملة تشجيعية تقولها الأم. اختم بطلب صورة أو تقييم من الزرار.`;
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${GEMINI_KEY}`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }] }),
-  });
-  const data = await res.json();
-  return (data?.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text ?? "").join("\n").trim();
+  const callGemini = async () => {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${GEMINI_KEY}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }] }),
+    });
+    if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    return (data?.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text ?? "").join("\n").trim();
+  };
+  const callNvidia = async () => {
+    if (!NVIDIA_KEY) throw new Error("NVIDIA key not set");
+    const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${NVIDIA_KEY}` },
+      body: JSON.stringify({ model: "meta/llama-3.2-90b-vision-instruct", messages: [{ role: "user", content: prompt }], temperature: 0.4, max_tokens: 1200 }),
+    });
+    if (!res.ok) throw new Error(`NVIDIA ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) throw new Error("NVIDIA empty response");
+    return content.trim();
+  };
+  try {
+    return await callGemini();
+  } catch {
+    return await callNvidia();
+  }
 }
 
 Deno.serve(async (req) => {
