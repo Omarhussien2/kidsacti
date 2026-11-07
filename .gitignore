@@ -1,0 +1,5 @@
+.secrets.local
+secrets.txt
+handoff-prompt.md
+upgrade_v2/
+deploy_upgrade.sh
