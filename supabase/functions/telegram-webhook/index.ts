@@ -305,6 +305,7 @@ async function geminiGenerate(model: string, parts: unknown[], extra: object = {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contents: [{ role: "user", parts }], ...extra }),
+          signal: AbortSignal.timeout(45000),
         },
       );
       if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
@@ -342,6 +343,7 @@ async function nvidiaGenerate(parts: unknown[], extra: object = {}) {
       temperature: gen.temperature ?? 0.35,
       max_tokens: 2400,
     }),
+    signal: AbortSignal.timeout(45000),
   });
   if (!res.ok) throw new Error(`NVIDIA ${res.status}: ${await res.text()}`);
   const data = await res.json();
@@ -1200,7 +1202,24 @@ Deno.serve(async (req) => {
 
   try {
     const update = await req.json();
-    await routeUpdate(update);
+
+    // 1) منع تكرار المعالجة: تليجرام بيعيد إرسال نفس التحديث لو الرد اتأخر، وده كان بيعمل لوب رسائل انتظار
+    const uid = Number(update?.update_id ?? 0);
+    if (uid) {
+      const { data: seen } = await supabaseAdmin
+        .from("processed_updates")
+        .select("update_id")
+        .eq("update_id", uid)
+        .maybeSingle();
+      if (seen) return new Response("ok");
+      await supabaseAdmin.from("processed_updates").upsert({ update_id: uid });
+    }
+
+    // 2) الرد فورًا بـ 200 عشان تليجرام ميعيدش الإرسال، والمعالجة الكاملة بتمشي في الخلفية
+    EdgeRuntime.waitUntil(
+      routeUpdate(update).catch((e) => console.error("webhook bg error", e)),
+      { timeoutSeconds: 240 },
+    );
   } catch (e) {
     console.error("webhook error", e);
   }
